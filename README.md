@@ -69,15 +69,19 @@ A suíte de testes foi dividida em dois níveis para garantir confiança sem com
 
 ### Instalação e Execução
 1.  Clone o repositório.
-2.  Suba o banco de dados:
+    ```bash
+    git clone https://github.com/diegojimenes/Leany.git
+    ```
+    
+3.  Suba o banco de dados:
     ```bash
     docker-compose up -d
     ```
-3.  Instale as dependências:
+4.  Instale as dependências:
     ```bash
     npm install
     ```
-4.  Execute a aplicação:
+5.  Execute a aplicação:
     ```bash
     npm run start:dev
     ```
