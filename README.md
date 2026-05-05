@@ -81,7 +81,11 @@ A suíte de testes foi dividida em dois níveis para garantir confiança sem com
     ```bash
     npm install
     ```
-5.  Execute a aplicação:
+5.  Rode as migrations:
+    ```bash
+    npm run migration:run
+    ```
+6.  Execute a aplicação:
     ```bash
     npm run start:dev
     ```
