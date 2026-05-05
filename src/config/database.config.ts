@@ -11,5 +11,5 @@ export const getDatabaseConfig = (
   password: configService.get<string>('DB_PASSWORD', 'password'),
   database: configService.get<string>('DB_NAME', 'leany'),
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
-  synchronize: true, // Utilizado true para facilitar o desafio técnico
+  synchronize: false,
 });

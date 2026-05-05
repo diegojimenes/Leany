@@ -33,7 +33,7 @@ describe('TeamController', () => {
     expect(await controller.create(dto)).toEqual({
       id: '1',
       name: 'Team 1',
-      trainer: null,
+      trainer: { id: '', name: 'Desconhecido' },
       pokemons: [],
     });
     expect(mockTeamService.create).toHaveBeenCalledWith(dto);
@@ -49,7 +49,7 @@ describe('TeamController', () => {
     expect(await controller.addPokemon('1', dto)).toEqual({
       id: '1',
       name: 'Team 1',
-      trainer: null,
+      trainer: { id: '', name: 'Desconhecido' },
       pokemons: [],
     });
     expect(mockTeamService.addPokemon).toHaveBeenCalledWith('1', 25);

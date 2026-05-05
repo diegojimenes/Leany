@@ -4,49 +4,36 @@ import {
   ArgumentsHost,
   HttpException,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
+import { Response, Request } from 'express';
 import { ZodValidationException } from 'nestjs-zod';
+import { ZodError } from 'zod';
+
+interface ErrorResponse {
+  statusCode: number;
+  method: string;
+  path: string;
+  message: string | object;
+  timestamp: string;
+}
+
+interface QueryError extends Error {
+  code: string;
+}
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger(AllExceptionsFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
-    const response = ctx.getResponse();
-    const request = ctx.getRequest();
+    const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
 
-    let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
-    let message: any = 'Internal server error';
+    const { statusCode, message } = this.handleException(exception);
 
-    if (exception instanceof ZodValidationException) {
-      statusCode = HttpStatus.BAD_REQUEST;
-      const zodError = exception.getZodError() as any;
-      message = zodError.issues.map((issue: any) => ({
-        field: issue.path.join('.'),
-        message: issue.message,
-      }));
-    } else if (exception instanceof HttpException) {
-      statusCode = exception.getStatus();
-      const res = exception.getResponse() as any;
-      message = typeof res === 'string' ? res : res.message || res;
-    } else if (
-      exception &&
-      typeof exception === 'object' &&
-      'code' in exception
-    ) {
-      if ((exception as any).code === '23505') {
-        statusCode = HttpStatus.CONFLICT;
-        message = 'Conflito: Este registro já existe.';
-      } else if ((exception as any).code === '23503') {
-        statusCode = HttpStatus.BAD_REQUEST;
-        message = 'Violação de chave estrangeira.';
-      } else {
-        message = (exception as any).message;
-      }
-    } else if (exception instanceof Error) {
-      message = exception.message;
-    }
-
-    const errorResponse: any = {
+    const errorResponse: ErrorResponse = {
       statusCode,
       method: request.method,
       path: request.url,
@@ -54,29 +41,52 @@ export class AllExceptionsFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
     };
 
-    if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
-      let anchor = '';
-      const url = request.url;
-      const method = request.method;
-
-      if (url.includes('/teams')) {
-        if (method === 'POST' && url.includes('/pokemon')) anchor = '#/Teams/TeamController_addPokemon';
-        else if (method === 'POST') anchor = '#/Teams/TeamController_create';
-        else if (method === 'GET' && url.split('/').length > 2) anchor = '#/Teams/TeamController_findOne';
-        else if (method === 'GET') anchor = '#/Teams/TeamController_findAll';
-        else if (method === 'DELETE' && url.includes('/pokemon')) anchor = '#/Teams/TeamController_removePokemon';
-        else if (method === 'DELETE') anchor = '#/Teams/TeamController_remove';
-      } else if (url.includes('/trainers')) {
-        if (method === 'POST' && url.includes('/address')) anchor = '#/Trainers/TrainerController_addAddress';
-        else if (method === 'POST') anchor = '#/Trainers/TrainerController_create';
-        else if (method === 'GET' && url.split('/').length > 2) anchor = '#/Trainers/TrainerController_findOne';
-        else if (method === 'GET') anchor = '#/Trainers/TrainerController_findAll';
-        else if (method === 'DELETE') anchor = '#/Trainers/TrainerController_remove';
-      }
-
-      errorResponse.docLink = `http://localhost:3000/api/docs${anchor}`;
+    if (process.env.NODE_ENV !== 'production' && statusCode === HttpStatus.INTERNAL_SERVER_ERROR) {
+      this.logger.error(exception);
     }
 
     response.status(statusCode).json(errorResponse);
+  }
+
+  private handleException(exception: unknown): { statusCode: number; message: string | object } {
+    if (exception instanceof ZodValidationException) {
+      const zodError = exception.getZodError() as ZodError;
+      return {
+        statusCode: HttpStatus.BAD_REQUEST,
+        message: zodError.issues.map((issue) => ({
+          field: issue.path.join('.'),
+          message: issue.message,
+        })),
+      };
+    }
+
+    if (exception instanceof HttpException) {
+      const res = exception.getResponse();
+      return {
+        statusCode: exception.getStatus(),
+        message: typeof res === 'string' ? res : (res as any).message || res,
+      };
+    }
+
+    if (this.isQueryError(exception)) {
+      const dbErrors: Record<string, { status: number; msg: string }> = {
+        '23505': { status: HttpStatus.CONFLICT, msg: 'Este registro já existe.' },
+        '23503': { status: HttpStatus.BAD_REQUEST, msg: 'Violação de dependência de dados.' },
+      };
+
+      const error = dbErrors[exception.code];
+      if (error) {
+        return { statusCode: error.status, message: error.msg };
+      }
+    }
+
+    return {
+      statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+      message: exception instanceof Error ? exception.message : 'Internal server error',
+    };
+  }
+
+  private isQueryError(error: unknown): error is QueryError {
+    return typeof error === 'object' && error !== null && 'code' in error;
   }
 }

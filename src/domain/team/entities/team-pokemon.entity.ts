@@ -3,7 +3,7 @@ import { Team } from './team.entity';
 import { Pokemon } from '../../pokemon/entities/pokemon.entity';
 
 @Entity('team_pokemons')
-@Unique(['team', 'pokemon']) // Impede pokemon duplicado no mesmo time
+@Unique(['team', 'pokemon'])
 export class TeamPokemon {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -11,6 +11,6 @@ export class TeamPokemon {
   @ManyToOne(() => Team, (team) => team.teamPokemons, { onDelete: 'CASCADE' })
   team: Team;
 
-  @ManyToOne(() => Pokemon, { eager: true }) // eager loader para sempre retornar os dados do pokemon
+  @ManyToOne(() => Pokemon, { eager: true })
   pokemon: Pokemon;
 }

@@ -92,12 +92,12 @@ describe('PokemonService', () => {
       };
 
       mockPokemonRepository.findOneBy.mockResolvedValue(mockLocalPokemon);
-      mockPokeApiService.getPokemon.mockResolvedValue(null); // API fails
+      mockPokeApiService.getPokemon.mockResolvedValue(null);
 
       const result = await service.getPokemon(1);
 
       expect(mockPokeApiService.getPokemon).toHaveBeenCalledWith(1);
-      expect(result).toEqual(mockLocalPokemon); // returned stale data as fallback
+      expect(result).toEqual(mockLocalPokemon);
     });
 
     it('should throw error if API fails and no local data', async () => {
